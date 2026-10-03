@@ -3,72 +3,122 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Extractor de tickets y móviles</title>
+<title>Reporte de turno</title>
 <style>
 :root{
   --fondo:#eef1f4; --papel:#fff; --tinta:#1b2530; --suave:#5d6b7a;
-  --borde:#cbd3dc; --acento:#0e6b5c; --acento-h:#0a5448; --aviso:#9a5b00;
+  --borde:#cbd3dc; --acento:#0e6b5c; --acento-h:#0a5448; --aviso:#9a5b00; --calle:#4a5561;
 }
 @media (prefers-color-scheme:dark){
   :root{--fondo:#12181f; --papel:#1b242d; --tinta:#e6ebf0; --suave:#92a1b0;
-        --borde:#33414f; --acento:#3fb8a1; --acento-h:#5cd0ba; --aviso:#e0a64a;}
+        --borde:#33414f; --acento:#3fb8a1; --acento-h:#5cd0ba; --aviso:#e0a64a; --calle:#2a323b;}
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--fondo);color:var(--tinta);
+html,body{height:100%}
+body{margin:0;display:flex;flex-direction:column;background:var(--fondo);color:var(--tinta);
   font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;line-height:1.5}
-main{max-width:680px;margin:0 auto;padding:28px 18px 48px}
+main{flex:1;width:100%;max-width:680px;margin:0 auto;padding:28px 18px 32px}
 h1{font-size:1.5rem;margin:0 0 6px}
 .intro{margin:0 0 22px;color:var(--suave)}
-label{display:block;font-weight:600;margin:16px 0 6px}
+label.titulo{display:block;font-weight:600;margin:16px 0 6px}
 textarea{width:100%;padding:12px;border:1px solid var(--borde);border-radius:8px;
   background:var(--papel);color:var(--tinta);font:inherit;resize:vertical}
-#salida{font-family:Consolas,"SF Mono",monospace;font-size:.95rem}
-textarea:focus,button:focus-visible{outline:3px solid var(--acento);outline-offset:1px}
+#salida{font-family:Consolas,"SF Mono",monospace;font-size:.92rem;line-height:1.4}
+textarea:focus,button:focus-visible,.check input:focus-visible+span{outline:3px solid var(--acento);outline-offset:1px}
+.nota{margin:4px 0 0;font-size:.85rem;color:var(--suave)}
 .acciones{display:flex;gap:10px;margin-top:12px}
 button{font:inherit;font-weight:600;padding:10px 18px;border-radius:8px;border:1px solid transparent;cursor:pointer}
 .primario{background:var(--acento);color:#fff}
-.primario:hover:not(:disabled){background:var(--acento-h)}
-.primario:disabled{opacity:.5;cursor:not-allowed}
+.primario:hover{background:var(--acento-h)}
 .secundario{background:transparent;color:var(--tinta);border-color:var(--borde)}
 .secundario:hover{background:var(--papel)}
-#btnCopiar{margin-top:12px}
 .estado{min-height:1.5em;margin:12px 0 0;color:var(--suave)}
 .estado.aviso{color:var(--aviso)}
+.checks{display:grid;gap:10px;margin-top:20px}
+.check{display:block;cursor:pointer}
+.check input{position:absolute;opacity:0}
+.check span{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--borde);
+  border-radius:8px;background:var(--papel);font-weight:600}
+.check span::before{content:"";flex:none;width:22px;height:22px;border:2px solid var(--borde);border-radius:6px;
+  display:grid;place-items:center;color:#fff;font-size:15px;line-height:1}
+.check input:checked+span{border-color:var(--acento)}
+.check input:checked+span::before{content:"\2713";background:var(--acento);border-color:var(--acento)}
+#btnCopiar{margin-top:12px}
+
+/* Bus al fondo de la página */
+.via{position:relative;height:96px;overflow:hidden;background:var(--fondo);border-top:1px solid var(--borde)}
+.via::after{content:"";position:absolute;left:0;right:0;bottom:0;height:22px;background:var(--calle);
+  border-top:3px solid #e8b923}
+.bus{position:absolute;bottom:14px;width:240px;height:auto;animation:avanzar 22s linear infinite}
+@keyframes avanzar{from{left:-260px}to{left:100%}}
+@media (prefers-reduced-motion:reduce){.bus{animation:none;left:calc(50% - 120px)}}
 </style>
 </head>
 <body>
 <main>
-  <h1>Extractor de tickets y móviles</h1>
-  <p class="intro">Pega los mensajes copiados de WhatsApp. Se extrae el número de ticket y el ID del móvil de cada mensaje.</p>
+  <h1>Reporte de turno</h1>
+  <p class="intro">Pega los mensajes de WhatsApp: los tickets y el ID del móvil se ubican debajo de INCIDENTES.</p>
 
-  <label for="entrada">Mensajes de WhatsApp</label>
-  <textarea id="entrada" rows="10" placeholder="[3/10, 7:23 a. m.] Mesa Progresos: 22740779 EN PROGRESO OK&#10;ID Móvil: 674128&#10;Gestiona: MSNA"></textarea>
-
-  <div class="acciones">
-    <button id="btnExtraer" class="primario">Extraer datos</button>
-    <button id="btnLimpiar" class="secundario">Limpiar</button>
-  </div>
-
+  <label class="titulo" for="entrada">Mensajes de WhatsApp</label>
+  <textarea id="entrada" rows="8" placeholder="[3/10, 7:23 a. m.] Mesa Progresos: 22740779 EN PROGRESO OK&#10;ID Móvil: 674128&#10;Gestiona: MSNA"></textarea>
   <p id="estado" class="estado" role="status"></p>
 
-  <label for="salida">Resultado para copiar</label>
-  <textarea id="salida" rows="8" readonly placeholder="El resultado aparecerá aquí"></textarea>
+  <div class="checks">
+    <label class="check"><input type="checkbox" id="chkInventario"><span>Inventario realizado compartido al grupo</span></label>
+    <label class="check"><input type="checkbox" id="chkRepuestos"><span>Devolución de repuestos al CES</span></label>
+  </div>
 
-  <button id="btnCopiar" class="primario" disabled>Copiar resultado</button>
+  <label class="titulo" for="salida">Mensaje para enviar</label>
+  <textarea id="salida" rows="20"></textarea>
+  <p class="nota">Puedes editarlo antes de copiar. Se vuelve a generar si cambias los mensajes o las casillas.</p>
+
+  <div class="acciones">
+    <button id="btnCopiar" class="primario">Copiar mensaje</button>
+    <button id="btnLimpiar" class="secundario">Limpiar</button>
+  </div>
 </main>
+
+<div class="via" aria-hidden="true">
+  <svg class="bus" viewBox="0 0 360 100" xmlns="http://www.w3.org/2000/svg">
+    <!-- cuerpo delantero y trasero -->
+    <rect x="8" y="14" width="170" height="62" rx="9" fill="#c8102e"/>
+    <rect x="198" y="14" width="152" height="62" rx="9" fill="#c8102e"/>
+    <!-- articulación -->
+    <rect x="176" y="20" width="24" height="52" fill="#2b2f36"/>
+    <path d="M178 20v52M184 20v52M190 20v52M196 20v52" stroke="#555c66" stroke-width="2"/>
+    <!-- franja y ventanas -->
+    <rect x="8" y="58" width="170" height="6" fill="#8e0b20"/>
+    <rect x="198" y="58" width="152" height="6" fill="#8e0b20"/>
+    <g fill="#cfe6f2">
+      <rect x="62" y="22" width="30" height="30" rx="3"/><rect x="96" y="22" width="30" height="30" rx="3"/><rect x="130" y="22" width="30" height="30" rx="3"/>
+      <rect x="212" y="22" width="30" height="30" rx="3"/><rect x="246" y="22" width="30" height="30" rx="3"/><rect x="280" y="22" width="30" height="30" rx="3"/><rect x="314" y="22" width="26" height="30" rx="3"/>
+    </g>
+    <!-- parabrisas y puerta delantera -->
+    <rect x="16" y="22" width="40" height="40" rx="4" fill="#cfe6f2"/>
+    <line x1="36" y1="22" x2="36" y2="62" stroke="#c8102e" stroke-width="2"/>
+    <!-- luces -->
+    <rect x="9" y="64" width="6" height="6" rx="2" fill="#ffe27a"/>
+    <!-- ruedas -->
+    <g fill="#1d2127"><circle cx="48" cy="78" r="12"/><circle cx="148" cy="78" r="12"/><circle cx="300" cy="78" r="12"/></g>
+    <g fill="#9aa3ad"><circle cx="48" cy="78" r="5"/><circle cx="148" cy="78" r="5"/><circle cx="300" cy="78" r="5"/></g>
+  </svg>
+</div>
+
 <script>
 const entrada = document.getElementById('entrada');
 const salida = document.getElementById('salida');
 const estado = document.getElementById('estado');
 const btnCopiar = document.getElementById('btnCopiar');
+const chkInventario = document.getElementById('chkInventario');
+const chkRepuestos = document.getElementById('chkRepuestos');
 
-// Encabezado de mensaje de WhatsApp: "[10:32, 2/10/2026] Nombre:" o "2/10/26, 10:32 - Nombre:"
+// Encabezado de mensaje de WhatsApp: "[3/10, 7:23 a. m.]", "[10:32, 2/10/2026]" o "2/10/26, 10:40 -"
 const ENCABEZADO = /^\s*(?:\[\s*\d{1,2}[\/.\-]\d{1,2}(?:[\/.\-]\d{2,4})?,?\s+\d{1,2}:\d{2}[^\]]*\]|\[\s*\d{1,2}:\d{2}[^\]]*\]|\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4},?\s+\d{1,2}:\d{2}\s+-)/;
 
-// Ticket: "Ticket 12345", "Ticket N° 12345", "TK-12345", "Caso: 12345", "INC123456", "#12345"
+// Ticket con palabra clave: "Ticket 123", "TK-123", "Caso: 123", "#123"
 const RE_TICKET = /(?:ticket|tkt|tk|caso|incidente|inc|ref)\s*(?:n[°ºo.]*|no\.?|#|id)?\s*[:\-#]?\s*([A-Za-z]{0,4}-?\d{3,})|#(\d{3,})/i;
 
-// Móvil: "Móvil 123", "Movil: 45", "ID móvil 678", "Unidad 12", "Interno 5"
+// Móvil: "ID Móvil: 674128", "Movil 207", "Unidad 12", "Interno 5"
 const RE_MOVIL = /(?:id\s*)?(?:m[oó]vil|movil|unidad|interno)\s*(?:n[°ºo.]*|no\.?|#|id)?\s*[:\-#]?\s*([A-Za-z]{0,3}-?\d{1,6}[A-Za-z]?)/i;
 
 function dividirMensajes(texto) {
@@ -94,7 +144,7 @@ function dividirMensajes(texto) {
 }
 
 function extraer(mensaje) {
-  // Quitar el encabezado "[3/10, 7:23 a. m.]" para que la hora no se confunda con datos
+  // Quitar el encabezado para que la hora no se confunda con datos
   const cuerpo = mensaje.replace(/^\s*(?:\[[^\]]*\]|\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4},?\s+\d{1,2}:\d{2}[^-]*-)/, '');
 
   const m = cuerpo.match(RE_MOVIL);
@@ -113,40 +163,56 @@ function extraer(mensaje) {
   return { ticket, movil };
 }
 
+function construirReporte(lineasTickets) {
+  const si = c => (c.checked ? 'SI' : 'NO');
+  return [
+    'GESTIÓN DE TURNO PATIO(S): ',
+    'INVENTARIO REALIZADO COMPARTIDO AL GRUPO: ' + si(chkInventario),
+    '',
+    '',
+    '*MPP*',
+    '',
+    '',
+    '',
+    '',
+    '*INCIDENTES*',
+    ...lineasTickets,
+    '',
+    '',
+    '',
+    'REVISIÓN DE FLOTA',
+    '',
+    '',
+    '',
+    'AVANCE DE CAMPAÑAS VIGENTES: ',
+    '',
+    '',
+    'DEVOLUCION DE REPUESTOS AL CES: ' + si(chkRepuestos)
+  ].join('\n');
+}
+
 function procesar() {
   const texto = entrada.value.trim();
   estado.className = 'estado';
+  let lineas = [];
 
-  if (!texto) {
-    salida.value = '';
-    estado.textContent = '';
-    btnCopiar.disabled = true;
-    return;
-  }
+  if (texto) {
+    const datos = dividirMensajes(texto).map(extraer).filter(d => d.ticket || d.movil);
+    lineas = datos.map(d => `${d.ticket || 'SIN TICKET'}  ID ${d.movil || 'SIN ID'}`);
 
-  const datos = dividirMensajes(texto).map(extraer)
-    .filter(d => d.ticket || d.movil);
-
-  if (!datos.length) {
-    salida.value = '';
-    btnCopiar.disabled = true;
-    estado.className = 'estado aviso';
-    estado.textContent = 'No se encontró ningún ticket ni móvil. Revisa que los mensajes los incluyan.';
-    return;
-  }
-
-  salida.value = datos
-    .map(d => `${d.ticket || 'SIN TICKET'}  ID ${d.movil || 'SIN ID'}`)
-    .join('\n');
-  btnCopiar.disabled = false;
-
-  const incompletos = datos.filter(d => !d.ticket || !d.movil).length;
-  if (incompletos) {
-    estado.className = 'estado aviso';
-    estado.textContent = `${datos.length} mensajes procesados. ${incompletos} con datos faltantes (marcados SIN TICKET / SIN ID).`;
+    if (!datos.length) {
+      estado.className = 'estado aviso';
+      estado.textContent = 'No se encontró ningún ticket ni móvil. Revisa que los mensajes los incluyan.';
+    } else {
+      const incompletos = datos.filter(d => !d.ticket || !d.movil).length;
+      estado.className = incompletos ? 'estado aviso' : 'estado';
+      estado.textContent = `${datos.length} mensajes procesados.` +
+        (incompletos ? ` ${incompletos} con datos faltantes (SIN TICKET / SIN ID).` : '');
+    }
   } else {
-    estado.textContent = `${datos.length} mensajes procesados.`;
+    estado.textContent = '';
   }
+  salida.value = construirReporte(lineas);
 }
 
 async function copiar() {
@@ -161,14 +227,19 @@ async function copiar() {
   setTimeout(() => (btnCopiar.textContent = original), 1500);
 }
 
-document.getElementById('btnExtraer').addEventListener('click', procesar);
 entrada.addEventListener('input', procesar);
+chkInventario.addEventListener('change', procesar);
+chkRepuestos.addEventListener('change', procesar);
 btnCopiar.addEventListener('click', copiar);
 document.getElementById('btnLimpiar').addEventListener('click', () => {
   entrada.value = '';
+  chkInventario.checked = false;
+  chkRepuestos.checked = false;
   procesar();
   entrada.focus();
 });
+
+procesar();
 </script>
 </body>
 </html>
