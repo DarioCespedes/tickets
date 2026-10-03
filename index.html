@@ -42,7 +42,7 @@ button{font:inherit;font-weight:600;padding:10px 18px;border-radius:8px;border:1
   <p class="intro">Pega los mensajes copiados de WhatsApp. Se extrae el número de ticket y el ID del móvil de cada mensaje.</p>
 
   <label for="entrada">Mensajes de WhatsApp</label>
-  <textarea id="entrada" rows="10" placeholder="Pega aquí los mensajes..."></textarea>
+  <textarea id="entrada" rows="10" placeholder="[3/10, 7:23 a. m.] Mesa Progresos: 22740779 EN PROGRESO OK&#10;ID Móvil: 674128&#10;Gestiona: MSNA"></textarea>
 
   <div class="acciones">
     <button id="btnExtraer" class="primario">Extraer datos</button>
@@ -63,7 +63,7 @@ const estado = document.getElementById('estado');
 const btnCopiar = document.getElementById('btnCopiar');
 
 // Encabezado de mensaje de WhatsApp: "[10:32, 2/10/2026] Nombre:" o "2/10/26, 10:32 - Nombre:"
-const ENCABEZADO = /^\s*(?:\[\s*\d{1,2}:\d{2}(?::\d{2})?[^\]]*\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}\s*\]|\[?\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4},?\s+\d{1,2}:\d{2})/;
+const ENCABEZADO = /^\s*(?:\[\s*\d{1,2}[\/.\-]\d{1,2}(?:[\/.\-]\d{2,4})?,?\s+\d{1,2}:\d{2}[^\]]*\]|\[\s*\d{1,2}:\d{2}[^\]]*\]|\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4},?\s+\d{1,2}:\d{2}\s+-)/;
 
 // Ticket: "Ticket 12345", "Ticket N° 12345", "TK-12345", "Caso: 12345", "INC123456", "#12345"
 const RE_TICKET = /(?:ticket|tkt|tk|caso|incidente|inc|ref)\s*(?:n[°ºo.]*|no\.?|#|id)?\s*[:\-#]?\s*([A-Za-z]{0,4}-?\d{3,})|#(\d{3,})/i;
@@ -94,12 +94,23 @@ function dividirMensajes(texto) {
 }
 
 function extraer(mensaje) {
-  const t = mensaje.match(RE_TICKET);
-  const m = mensaje.match(RE_MOVIL);
-  return {
-    ticket: t ? (t[1] || t[2]) : null,
-    movil: m ? m[1] : null
-  };
+  // Quitar el encabezado "[3/10, 7:23 a. m.]" para que la hora no se confunda con datos
+  const cuerpo = mensaje.replace(/^\s*(?:\[[^\]]*\]|\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4},?\s+\d{1,2}:\d{2}[^-]*-)/, '');
+
+  const m = cuerpo.match(RE_MOVIL);
+  const movil = m ? m[1] : null;
+
+  let ticket = null;
+  const t = cuerpo.match(RE_TICKET);
+  if (t) {
+    ticket = t[1] || t[2];
+  } else {
+    // Sin palabra clave: primer número largo que no sea el ID del móvil
+    const sinMovil = m ? cuerpo.replace(m[0], ' ') : cuerpo;
+    const n = sinMovil.match(/\b\d{6,}\b/);
+    ticket = n ? n[0] : null;
+  }
+  return { ticket, movil };
 }
 
 function procesar() {
@@ -125,14 +136,14 @@ function procesar() {
   }
 
   salida.value = datos
-    .map(d => `Ticket: ${d.ticket || 'no encontrado'} | Móvil: ${d.movil || 'no encontrado'}`)
+    .map(d => `${d.ticket || 'SIN TICKET'}  ID ${d.movil || 'SIN ID'}`)
     .join('\n');
   btnCopiar.disabled = false;
 
   const incompletos = datos.filter(d => !d.ticket || !d.movil).length;
   if (incompletos) {
     estado.className = 'estado aviso';
-    estado.textContent = `${datos.length} mensajes procesados. ${incompletos} con datos faltantes (marcados "no encontrado").`;
+    estado.textContent = `${datos.length} mensajes procesados. ${incompletos} con datos faltantes (marcados SIN TICKET / SIN ID).`;
   } else {
     estado.textContent = `${datos.length} mensajes procesados.`;
   }
